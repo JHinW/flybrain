@@ -12,6 +12,14 @@ FEAR_BACKOFF_DURATION=30
 SERVER_PID=""
 FEAR_SPIKE_TIME=0
 
+DECISION_ENGINE=""
+
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+  set -a
+  source "$PROJECT_DIR/.env" 2>/dev/null || true
+  set +a
+fi
+
 cleanup() {
   if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID"
@@ -31,8 +39,16 @@ check_deps() {
     echo "Error: jq is required but not found. Install with: brew install jq" >&2
     exit 1
   fi
-  if ! command -v claude >/dev/null 2>&1; then
-    echo "Error: claude CLI is required but not found. Install Claude Code first." >&2
+  if [[ -f "$PROJECT_DIR/agent/decide.js" ]]; then
+    if [[ "${USE_CLAUDE_CLI:-false}" == "true" ]] && command -v claude >/dev/null 2>&1; then
+      DECISION_ENGINE="claude"
+    else
+      DECISION_ENGINE="node"
+    fi
+  elif command -v claude >/dev/null 2>&1; then
+    DECISION_ENGINE="claude"
+  else
+    echo "Error: claude CLI or agent/decide.js is required but neither was found." >&2
     exit 1
   fi
   if [[ ! -f "$POLICY" ]]; then
@@ -137,18 +153,23 @@ FEAR_BACKOFF: ${IN_BACKOFF}
 Current fly state:
 ${STATE}"
 
-  RAW_RESPONSE=$(command claude -p \
-    --system-prompt "$POLICY_CONTENT" \
-    --no-session-persistence \
-    --model haiku \
-    --output-format json \
-    "$PROMPT" \
-    2>/dev/null) || true
+  if [[ "$DECISION_ENGINE" == "claude" ]]; then
+    RAW_RESPONSE=$(command claude -p \
+      --system-prompt "$POLICY_CONTENT" \
+      --no-session-persistence \
+      --model haiku \
+      --output-format json \
+      "$PROMPT" \
+      2>/dev/null) || true
 
-  # Extract the result text from claude's JSON envelope, strip markdown fences, parse as JSON
-  RESULT_TEXT=$(echo "$RAW_RESPONSE" | jq -r '.result // empty' 2>/dev/null) || true
-  # Strip ```json ... ``` fences (handles escaped newlines from jq -r output)
-  RESPONSE=$(echo "$RESULT_TEXT" | sed 's/^```json[[:space:]]*//;s/[[:space:]]*```[[:space:]]*$//' | jq -c '.' 2>/dev/null) || true
+    # Extract the result text from claude's JSON envelope, strip markdown fences, parse as JSON
+    RESULT_TEXT=$(echo "$RAW_RESPONSE" | jq -r '.result // empty' 2>/dev/null) || true
+    # Strip ```json ... ``` fences (handles escaped newlines from jq -r output)
+    RESPONSE=$(echo "$RESULT_TEXT" | sed 's/^```json[[:space:]]*//;s/[[:space:]]*```[[:space:]]*$//' | jq -c '.' 2>/dev/null) || true
+  else
+    RAW_RESPONSE=$(node "$SCRIPT_DIR/decide.js" --prompt "$PROMPT" 2>/dev/null) || true
+    RESPONSE=$(echo "$RAW_RESPONSE" | jq -c '.' 2>/dev/null) || true
+  fi
 
   if [[ -z "$RESPONSE" || "$RESPONSE" == "null" ]]; then
     echo "[caretaker] Could not parse response, skipping" >&2

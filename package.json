@@ -4,8 +4,11 @@
   "private": true,
   "description": "Interactive virtual Drosophila",
   "scripts": {
+    "start": "node server/caretaker.js",
+    "test": "node tests/run-node.js && node tests/test-ai.js",
     "caretaker": "node server/caretaker.js",
     "query-log": "bash tools/query-log.sh",
+    "chat-log": "node tools/view-chat.js",
     "migrate-logs": "node server/migrate-logs.js"
   },
   "dependencies": {

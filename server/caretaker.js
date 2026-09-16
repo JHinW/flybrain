@@ -3,11 +3,12 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 var readline = require('readline');
-var Anthropic = require('@anthropic-ai/sdk');
+var ai = require('./ai');
 var dbModule = require('./db');
 var chatPolicyPath = path.join(__dirname, '..', 'agent', 'chat-policy.md');
 var chatPolicyContent = fs.readFileSync(chatPolicyPath, 'utf-8');
-var anthropic = new Anthropic();
+var aiConfig = ai.getConfig();
+var anthropic = ai.getClient();
 
 var PORT = parseInt(process.env.CARETAKER_PORT, 10) || 7600;
 var caretakerDb = dbModule.openDb();
@@ -150,6 +151,7 @@ function buildChatContext(userMessage) {
 }
 
 async function handleChatRequest(userMessage, viewContext) {
+  process.stderr.write('[caretaker] User message: "' + userMessage + '"\n');
   var context = buildChatContext(userMessage);
   var systemPrompt = chatPolicyContent + '\n\n---\n\n' + context;
   if (viewContext != null) {
@@ -163,19 +165,77 @@ async function handleChatRequest(userMessage, viewContext) {
   messages.push({ role: 'user', content: userMessage });
   try {
     var response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 512,
+      model: aiConfig.chatModel,
+      max_tokens: aiConfig.maxTokens,
       system: systemPrompt,
       messages: messages
     });
-    var assistantMessage = response.content[0].text;
+    var assistantMessage = ai.extractText(response);
+    var tokenInfo = response.usage ? ' (' + response.usage.output_tokens + ' tokens)' : '';
+    process.stderr.write('[caretaker] AI response' + tokenInfo + ': "' + assistantMessage.replace(/\s+/g, ' ').slice(0, 120) + '..."\n');
     var ts = new Date().toISOString();
     caretakerDb.insertChatMessage(ts, 'user', userMessage);
     caretakerDb.insertChatMessage(ts, 'assistant', assistantMessage);
     return { role: 'assistant', message: assistantMessage, timestamp: ts };
   } catch (err) {
+    process.stderr.write('[caretaker] AI chat error: ' + err.message + '\n');
     return { role: 'assistant', message: 'Sorry, I could not process that question. Error: ' + err.message, timestamp: new Date().toISOString(), error: true };
   }
+}
+
+var MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.gz': 'application/octet-stream',
+  '.bin': 'application/octet-stream',
+  '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8'
+};
+
+var STATIC_ROOT = path.resolve(__dirname, '..');
+
+function serveStatic(req, res) {
+  var parsedUrl;
+  try {
+    parsedUrl = new URL(req.url, 'http://localhost');
+  } catch (e) {
+    res.writeHead(400);
+    res.end('Bad request');
+    return;
+  }
+  var pathname = decodeURIComponent(parsedUrl.pathname);
+  if (pathname === '/' || pathname === '') {
+    pathname = '/index.html';
+  }
+  var safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+  var filePath = path.join(STATIC_ROOT, safePath);
+
+  if (!filePath.startsWith(STATIC_ROOT)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
+  fs.stat(filePath, function(err, stats) {
+    if (err || !stats.isFile()) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Not found');
+      return;
+    }
+    var ext = path.extname(filePath).toLowerCase();
+    var mime = MIME_TYPES[ext] || 'application/octet-stream';
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': stats.size
+    });
+    fs.createReadStream(filePath).pipe(res);
+  });
 }
 
 var server = http.createServer(function(req, res) {
@@ -303,6 +363,10 @@ var server = http.createServer(function(req, res) {
     }
     return;
   }
+  if (req.method === 'GET') {
+    serveStatic(req, res);
+    return;
+  }
   res.writeHead(404);
   res.end('Not found');
 });
@@ -329,6 +393,11 @@ rl.on('close', function() { process.exit(0); });
 
 server.listen(PORT, function() {
   process.stderr.write('[caretaker] WebSocket server on port ' + PORT + '\n');
+  if (aiConfig.isCustomEndpoint) {
+    process.stderr.write('[caretaker] Custom AI endpoint: ' + aiConfig.baseURL + ' (model: ' + aiConfig.chatModel + ')\n');
+  } else {
+    process.stderr.write('[caretaker] AI endpoint: https://api.anthropic.com (model: ' + aiConfig.chatModel + ')\n');
+  }
 });
 
 var DAILY_SCORE_INTERVAL_MS = 5 * 60 * 1000;

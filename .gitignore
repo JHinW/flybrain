@@ -5,6 +5,10 @@ node_modules/
 caretaker.log
 caretaker-decisions.log
 data/
+.env
+.env.*
+!.env.example
+!example.env
 
 # Xcode
 ios/FlyBrain.xcodeproj/xcuserdata/
