@@ -280,13 +280,30 @@ flowchart TD
 
 ---
 
-## 五、 推荐目录结构与分阶段实施路线图
+## 五、 工程实施规划：两大阶段与可迭代 CLI 原型（Roadmap）
 
-建议在仓库下建立独立的 Go 模块目录 `flybody/`，保持各层职责边界清晰：
+整体工程拆解为 **两大核心阶段（先单机具身 CLI，后 P2P 三维电子世界）**；而在第一阶段中，优先打通一个**架构边界严密、可持续演进的最小闭环 CLI 原型（Iteration 1.0）**。
+
+```mermaid
+flowchart LR
+    subgraph Stage1["第一大步：具身 CLI 与开放协议建设 (Single-Node Embodied CLI)"]
+        I1["Iter 1.0: 最小闭环 CLI 原型<br>核心骨架 + 复眼/触角/六足/代谢 + JSON快照"] --> I2["Iter 1.1: 完整器官树与实时 TUI<br>补全口器/颈部/刚毛 + watch 实时面板"]
+        I2 --> I3["Iter 1.2: 13.9万神经元 CSR 引擎 & WAL 回放<br>原生加载 connectome.bin.gz + 确定性重放"]
+        I3 --> I4["Iter 1.3: 二次开发协议网关<br>暴露 gRPC / WebSocket 供外部 UI 挂载"]
+    end
+    subgraph Stage2["第二大步：去中心化 3D 电子世界 (Decentralized 3D P2P World)"]
+        P1["Iter 2.0: 局部 3D 形态与体积<br>3-椭球体 + 6-腿胶囊体 + 四元数姿态"] --> P2["Iter 2.1: 无原点 3D 关系空间<br>libp2p + RTT 延迟 + 3D Vivaldi 弹簧松弛"]
+        P2 --> P3["Iter 2.2: 多果蝇立体交互<br>立体角 Ω 视觉投影 + 双触角视差 + 碰撞握手"]
+    end
+    Stage1 --> Stage2
+```
+
+### 1. 推荐目录结构（`flybody/`）
 
 ```text
 flybody/
 ├── cmd/
+│   ├── flybody/               # Iter 1.0 统一 CLI & REPL 入口 (后续演进为 flyd 守护进程 + flyctl 客户端)
 │   ├── flyd/                  # 虚拟身体守护进程 (含脑引擎 + P2P 节点 + gRPC/WS 网关)
 │   └── flyctl/                # 命令行交互与实时观测工具 (CLI & Bubbletea TUI)
 ├── api/
@@ -296,23 +313,57 @@ flybody/
 │   │   ├── body/              # VirtualBody 聚合根、三大体节 (Head/Thorax/Abdomen)、3D 椭球体积形态
 │   │   ├── organ/             # Organ/Receptor/Effector 接口与复眼、触角、口器、六足、双翅实现
 │   │   ├── metabolism/        # 代谢组织 (血糖、ATP、内驱力演化)
-│   │   ├── brain/             # 脑接口定义与纯 Go 13.9 万神经元 CSR 脉冲引擎
+│   │   ├── brain/             # BrainPort 接口：内置 59 脑区概念连接组 (Iter 1.0) 与 13.9 万 CSR 引擎 (Iter 1.2)
 │   │   └── space3d/           # 无原点 3D 关系空间：四元数姿态、Vivaldi 弹簧松弛、立体角与碰撞解算
 │   ├── app/                   # 【应用层】故事线编排
 │   │   └── runtime/           # 生理节拍器 (Sense -> Propagate -> Actuate -> Settle)、快照与回放编排
 │   └── infra/                 # 【基础设施层】外部技术适配
-│       ├── store/             # SQLite .flysoul 状态快照与 WAL 事件溯源持久化
+│       ├── store/             # .flysoul 状态快照 (JSON / SQLite) 与 WAL 事件溯源持久化
+│       ├── cli/               # 命令行参数解析、状态对比格式化输出与交互式 REPL
 │       ├── p2p/               # 基于 libp2p 的节点发现、RTT 测量与 3D 空间 Gossip 同步
 │       └── server/            # gRPC、WebSocket 与 Unix Socket 服务端实现
 └── go.mod
 ```
 
-### 三阶段演进计划
-* **Phase 1（单机具身内核 + CLI + 持久化）**：
-  * 完成 `domain/body`、`domain/organ`、`domain/metabolism` 建模，打通复眼颜色/迫近输入、触角气味输入与六足/口器运动反馈；
-  * 实现 `flyctl stim` / `flyctl inspect --watch` 与 `.flysoul` SQLite 快照持久化。
-* **Phase 2（开放协议与全脑 CSR 原生加速）**：
-  * 暴露 gRPC 与 WebSocket 接口，支持将现有浏览器 2D/3D 视图作为纯渲染端挂载到 `flyd`；
-  * 将 `connectome.bin.gz` 在 Go 中原生加载，实现亚毫秒级全脑突触传播。
-* **Phase 3（无原点三维去中心化多果蝇世界）**：
-  * 接入 `domain/space3d` 与 `infra/p2p`，启动多个 `flyd` 节点测试“RTT 延迟 + 运动积分”的三维弹簧松弛定位、立体角视觉感知与三维椭球碰撞交互。
+### 2. 第一大步起点：可迭代 CLI 原型（Iteration 1.0）详细规格
+
+为确保原型具备高可迭代性，Iter 1.0 严格确立 **三层架构职责边界** 与 **RSI 器官接口抽象**，后续迭代仅需挂载新器官或替换接口实现，无需推翻重构：
+
+| 所属层级 | 包路径 (`flybody/internal/...`) | 核心对象 (`struct` / `interface`) | 承担的唯一职责（编码如派活） |
+| :--- | :--- | :--- | :--- |
+| **领域层 (Domain)** | `domain/organ` | `Organ`, `Receptor`, `Effector` (接口) | **RSI 相似性抽象**：统一定义所有器官的生命周期 `Tick(dt)`、快照导出 `Snapshot()/Restore()`、传入脉冲采集与传出动力响应。 |
+| **领域层 (Domain)** | `domain/body` | `VirtualBody`, `BodySegment` | **虚拟身体聚合根**：按头/胸/腹管理器官组合，向内收集全身传入脉冲，向外分发大脑运动指令，汇总全身状态树。 |
+| **领域层 (Domain)** | `domain/organ/*` | `CompoundEye`, `Antenna`, `HexapodLegs`, `WingPair`, `Proboscis`, `Metabolism` | **首批代表性器官**：<br>• `CompoundEye`：接收颜色(波长/RGB)+光强+迫近率 $\rightarrow$ 转导为 `VIS_LA`/`VIS_ME`/`VIS_LO`<br>• `Antenna`：接收气味/风力 $\rightarrow$ 转导为 `OLF_ORN_*`/`MECH_JO`<br>• `HexapodLegs` & `WingPair`：消化 `MN_LEG_*`/`MN_WING_*` $\rightarrow$ 更新步态相位、速度、展翅频率<br>• `Proboscis` & `Metabolism`：消化 `MN_PROBOSCIS` 与运动做功 $\rightarrow$ 维护血糖、疲劳与 5 大内驱力 |
+| **领域层 (Domain)** | `domain/brain` | `BrainPort` (接口), `ConceptConnectome` | **大脑端口边界**：Iter 1.0 先内置 **59 脑区概念连接组引擎**（移植自 [`js/constants.js`](../js/constants.js) & [`js/connectome.js`](../js/connectome.js)，零外部文件依赖、毫秒级启动、逻辑 100% 透明）；Iter 1.2 只需新增 `CSRConnectome` 实现同一接口即可无缝切换至 13.9 万神经元。 |
+| **应用层 (Application)** | `app/runtime` | `PhysiologyRuntime` | **像写故事一样编排单步或连续节拍**：<br>`Sense()` $\rightarrow$ `Brain.Propagate()` $\rightarrow$ `Body.Actuate()` $\rightarrow$ `Metabolism.Settle()` $\rightarrow$ `Store.Save()`。 |
+| **基础设施层 (Infra)** | `infra/store` | `SnapshotStore` | **状态持久化**：Iter 1.0 提供高可读性的 `.flysoul.json` 状态树快照（含全身器官状态 + 脑电位 + 逻辑时钟 `TickID`），每次刺激或推进节拍支持自动/手动落盘。 |
+| **基础设施层 (Infra)** | `infra/cli` | `CLIApp` (`cmd/flybody`) | **命令行交互与协议预留**：解析用户指令，调用 `PhysiologyRuntime` 并格式化输出刺激前后的全身组织状态变动。 |
+
+#### Iter 1.0 核心 CLI 交互命令
+```bash
+# 1. 查看虚拟身体三大体节、各器官生理参数、活跃脑区与内驱力全貌
+flybody inspect
+
+# 2. 向指定器官注入刺激并推进节拍（自动对比刺激前后的组织行为变动）
+flybody stim eye --side=left --color="#8A2BE2" --wavelength=365 --intensity=0.8 --ticks=5
+flybody stim antenna --odor=food --intensity=0.9 --ticks=5
+
+# 3. 推进自然生命节拍或进入交互式沙盒 REPL
+flybody step --ticks=10
+flybody repl
+
+# 4. 导出或恢复虚拟身体状态快照
+flybody snapshot save ./hungry_fly.json
+flybody snapshot load ./hungry_fly.json
+```
+
+### 3. 后续迭代演进清单
+* **First Major Stage（具身 CLI 与开放协议建设）**：
+  * **Iter 1.0**：打通上述最小闭环 CLI 原型与单元测试；
+  * **Iter 1.1**：补全颈部关节、体表刚毛等细分组织，接入 `bubbletea` 实现 `flybody inspect --watch` 实时动态终端仪表盘；
+  * **Iter 1.2**：实现 `CSRConnectome` 原生加载 `data/connectome.bin.gz`（13.9 万神经元），并升级 `.flysoul` 为 SQLite 快照 + WAL 确定性回放；
+  * **Iter 1.3**：守护进程化（`flyd`），暴露 gRPC 与 WebSocket 网关，支持将现有浏览器 UI 或 3D 渲染引擎作为外部皮肤挂载。
+* **Second Major Stage（去中心化 3D 电子世界建设）**：
+  * **Iter 2.0**：实现 `domain/space3d` 局部三维形态（头/胸/腹 3-椭球体 + 6-腿胶囊体）与四元数姿态解算；
+  * **Iter 2.1**：接入 `libp2p` 实现无中心原点的“RTT 通信延迟 + 运动学积分”三维 Vivaldi 弹簧松弛定位，以及虚拟重力场 $\vec{g}$ / 时间偏振光场 $\vec{s}(t)$ 方向定轴；
+  * **Iter 2.2**：打通多果蝇节点间的立体角 $\Omega$ 迫近视觉投影、双触角空间视差采样与 P2P 椭球碰撞握手。
