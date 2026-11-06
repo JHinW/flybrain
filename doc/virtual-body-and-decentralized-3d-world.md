@@ -286,14 +286,15 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Stage1["第一大步：具身 CLI 与开放协议建设 (Single-Node Embodied CLI)"]
-        I1["Iter 1.0: 最小闭环 CLI 原型<br>核心骨架 + 复眼/触角/六足/代谢 + JSON快照"] --> I2["Iter 1.1: 完整器官树与实时 TUI<br>补全口器/颈部/刚毛 + watch 实时面板"]
-        I2 --> I3["Iter 1.2: 13.9万神经元 CSR 引擎 & WAL 回放<br>原生加载 connectome.bin.gz + 确定性重放"]
-        I3 --> I4["Iter 1.3: 二次开发协议网关<br>暴露 gRPC / WebSocket 供外部 UI 挂载"]
+    subgraph Stage1["第一大步：单机具身果蝇与环境稳态哨兵 (Single-Fly Embodied Sentinel)"]
+        I1["✅ Iter 1.0: 最小闭环 CLI 原型<br>三大体节 + 8大器官/代谢 + 59脑区 + JSON快照"] --> I2["🔥 Iter 1.1: 蘑菇体 FlyHash 与突触记忆<br>2048/5177维 MB_KC 稀疏编码 + Top-5% 抑制 + 多巴胺资格迹"]
+        I2 --> I3["🔥 Iter 1.2: 双向环境耦合介质与应激唤醒 LLM<br>EnvironmentMedium(被动场+主动探索) + StressReverseTrigger"]
+        I3 --> I4["Iter 1.3: 13.9万神经元 CSR 引擎 & 图谱修复<br>修复 build_connectome.py 26个零计数脑区 + WAL回放"]
+        I4 --> I5["Iter 1.4 (后置): 观察者接口与多皮肤渲染网关<br>ObserverPort (WebSocket/gRPC/TUI) 供外部皮肤挂载"]
     end
-    subgraph Stage2["第二大步：去中心化 3D 电子世界 (Decentralized 3D P2P World)"]
-        P1["Iter 2.0: 局部 3D 形态与体积<br>3-椭球体 + 6-腿胶囊体 + 四元数姿态"] --> P2["Iter 2.1: 无原点 3D 关系空间<br>libp2p + RTT 延迟 + 3D Vivaldi 弹簧松弛"]
-        P2 --> P3["Iter 2.2: 多果蝇立体交互<br>立体角 Ω 视觉投影 + 双触角视差 + 碰撞握手"]
+    subgraph Stage2["第二大步：去中心化 3D 果蝇电子社会 (3D Fly Digital Society)"]
+        P1["Iter 2.0: 局部 3D 形态与无原点关系空间<br>3-椭球体 + 6-腿胶囊体 + libp2p 3D Vivaldi 弹簧松弛"] --> P2["Iter 2.1: 社会分工与跨节点感官传染<br>侦察蝇/守卫蝇/长老蝇 + 210Hz 振翅声波(MECH_JO)/立体角 Ω"]
+        P2 --> P3["Iter 2.2: 群体生态全息诊断 (Swarm Triage)<br>从群体应激时空轨迹生成分布式故障根因与传播链切片"]
     end
     Stage1 --> Stage2
 ```
@@ -357,13 +358,14 @@ flybody snapshot save ./hungry_fly.json
 flybody snapshot load ./hungry_fly.json
 ```
 
-### 3. 后续迭代演进清单
-* **First Major Stage（具身 CLI 与开放协议建设）**：
-  * **Iter 1.0**：打通上述最小闭环 CLI 原型与单元测试；
-  * **Iter 1.1**：补全颈部关节、体表刚毛等细分组织，接入 `bubbletea` 实现 `flybody inspect --watch` 实时动态终端仪表盘；
-  * **Iter 1.2**：实现 `CSRConnectome` 原生加载 `data/connectome.bin.gz`（13.9 万神经元），并升级 `.flysoul` 为 SQLite 快照 + WAL 确定性回放；
-  * **Iter 1.3**：守护进程化（`flyd`），暴露 gRPC 与 WebSocket 网关，支持将现有浏览器 UI 或 3D 渲染引擎作为外部皮肤挂载。
-* **Second Major Stage（去中心化 3D 电子世界建设）**：
-  * **Iter 2.0**：实现 `domain/space3d` 局部三维形态（头/胸/腹 3-椭球体 + 6-腿胶囊体）与四元数姿态解算；
-  * **Iter 2.1**：接入 `libp2p` 实现无中心原点的“RTT 通信延迟 + 运动学积分”三维 Vivaldi 弹簧松弛定位，以及虚拟重力场 $\vec{g}$ / 时间偏振光场 $\vec{s}(t)$ 方向定轴；
-  * **Iter 2.2**：打通多果蝇节点间的立体角 $\Omega$ 迫近视觉投影、双触角空间视差采样与 P2P 椭球碰撞握手。
+### 3. 后续迭代演进清单（按优先级排序 v2.0，详见 [`fly-society-and-log-homeostasis-trigger.md`](./fly-society-and-log-homeostasis-trigger.md)）
+* **First Major Stage（单机具身果蝇与环境稳态哨兵）**：
+  * **Iter 1.0（已完成 ✅）**：打通最小闭环 CLI 原型（三大体节、8 大器官、代谢内驱力、59 脑区引擎、`.flysoul.json` 快照）与单元测试；
+  * **Iter 1.1（最高优 P0）**：实现蘑菇体神经哈希（`FlyHash`：`2048/5177` 维 `MB_KC` 稀疏编码 + `MB_APL` Top-5% 赢家通吃抑制）与多巴胺资格迹（Eligibility Trace）条件反射突触可塑性；
+  * **Iter 1.2（最高优 P0）**：实现**双向具身环境耦合介质（`EnvironmentMedium`：被动场辐射 + 果蝇行走/转头/伸喙触发的主动采样探测）**与**应激反向触发大模型（`StressReverseTrigger`）**；
+  * **Iter 1.3（中优 P1）**：修复 [`scripts/build_connectome.py`](../scripts/build_connectome.py) 中 26 个零计数脑区映射与 VNC 运动桥接，实现 `CSRConnectome` 原生加载 `data/connectome.bin.gz`（13.9 万神经元）及 WAL 确定性回放；
+  * **Iter 1.4（后置优先级 P2）**：守护进程化（`flyd`）并暴露只读**观察者接口（`ObserverPort`：WebSocket/gRPC 实时姿态广播流与 `bubbletea` TUI）**，支持人类观察者按个人喜好挂载 2D Canvas、3D 生态缸或极简拓扑皮肤。
+* **Second Major Stage（去中心化 3D 果蝇电子社会建设）**：
+  * **Iter 2.0**：实现 `domain/space3d` 局部三维形态（头/胸/腹 3-椭球体 + 6-腿胶囊体）与 `libp2p` 无原点三维 Vivaldi 弹簧松弛定位；
+  * **Iter 2.1**：实现果蝇社会角色分工（侦察蝇、守卫蝇、长老蝇）及跨节点立体角 $\Omega$ 视觉投影、双触角视差与 `210Hz` 振翅声波（`MECH_JO`）恐慌传染；
+  * **Iter 2.2**：打通面向大模型的“群体生态全息诊断（Swarm Triage）”，从群体应激时空轨迹自动生成分布式故障根因与传播链日志切片。
